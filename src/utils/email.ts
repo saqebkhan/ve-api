@@ -130,10 +130,8 @@ export const sendVerificationEmail = async (
     console.error("❌  Failed to send verification email:", error);
     throw error;
   } finally {
-    // Log the link for developer testing/debugging in all development settings
-    if (process.env.NODE_ENV === "development") {
-      console.log(`🔗  Verify URL (dev): ${verifyUrl}`);
-    }
+    // Log the link for developer testing/debugging
+    console.log(`🔗  Verify URL: ${verifyUrl}`);
   }
 };
 
@@ -208,9 +206,8 @@ export const sendPasswordResetEmail = async (
     console.error("❌  Failed to send password reset email:", error);
     throw error;
   } finally {
-    if (process.env.NODE_ENV === "development") {
-      console.log(`🔗  Reset URL (dev): ${resetUrl}`);
-    }
+    // Log the link for developer testing/debugging
+    console.log(`🔗  Reset URL: ${resetUrl}`);
   }
 };
 
@@ -286,8 +283,7 @@ export const sendInvitationEmail = async (
     console.error("❌  Failed to send invitation email:", error);
     throw error;
   } finally {
-    if (process.env.NODE_ENV === "development") {
-      console.log(`🔗  Onboard URL (dev): ${onboardUrl}`);
-    }
+    // Log the link for developer testing/debugging
+    console.log(`🔗  Onboard URL: ${onboardUrl}`);
   }
 };
