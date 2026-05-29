@@ -1,4 +1,8 @@
 import nodemailer from "nodemailer";
+import dns from "dns";
+
+// Force IPv4 first to avoid ENETUNREACH errors on cloud providers that lack IPv6 outbound support
+dns.setDefaultResultOrder("ipv4first");
 
 const SMTP_HOST = process.env.SMTP_HOST || "";
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587", 10);
@@ -26,6 +30,9 @@ const getEmailTransport = () => {
         user: SMTP_USER,
         pass: SMTP_PASS,
       },
+      connectionTimeout: 10000, // 10s
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
     });
     console.log("📬  Email transport initialized (Google SMTP)");
   }
