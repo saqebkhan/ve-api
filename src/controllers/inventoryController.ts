@@ -137,13 +137,26 @@ export const getProducts = async (
     const [stats] = await Product.aggregate([
       { $match: { sellerId: new mongoose.Types.ObjectId(sellerId.toString()), status: { $ne: 'archived' } } },
       {
+        $addFields: {
+          // Effective stock: if hasVariants, sum variant stocks; else use product stock
+          effectiveStock: {
+            $cond: [
+              { $and: [{ $eq: ['$hasVariants', true] }, { $gt: [{ $size: '$variants' }, 0] }] },
+              { $sum: '$variants.stock' },
+              '$stock',
+            ],
+          },
+        },
+      },
+      {
         $group: {
           _id: null,
           total: { $sum: 1 },
+          totalStock: { $sum: '$effectiveStock' },
           drafts: { $sum: { $cond: [{ $eq: ['$status', 'draft'] }, 1, 0] } },
           outOfStock: {
             $sum: {
-              $cond: [{ $and: [{ $eq: ['$trackInventory', true] }, { $eq: ['$stock', 0] }] }, 1, 0],
+              $cond: [{ $and: [{ $eq: ['$trackInventory', true] }, { $eq: ['$effectiveStock', 0] }] }, 1, 0],
             },
           },
           lowStock: {
@@ -152,8 +165,8 @@ export const getProducts = async (
                 {
                   $and: [
                     { $eq: ['$trackInventory', true] },
-                    { $gt: ['$stock', 0] },
-                    { $lte: ['$stock', '$lowStockThreshold'] },
+                    { $gt: ['$effectiveStock', 0] },
+                    { $lte: ['$effectiveStock', '$lowStockThreshold'] },
                   ],
                 },
                 1,
@@ -177,7 +190,7 @@ export const getProducts = async (
           hasNext: pageNum < Math.ceil(total / limitNum),
           hasPrev: pageNum > 1,
         },
-        stats: stats || { total: 0, drafts: 0, outOfStock: 0, lowStock: 0 },
+        stats: stats || { total: 0, totalStock: 0, drafts: 0, outOfStock: 0, lowStock: 0 },
       },
     });
   } catch (error) {

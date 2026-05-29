@@ -1,118 +1,58 @@
-import { Resend } from "resend";
 import nodemailer from "nodemailer";
 
-const EMAIL_FROM = process.env.EMAIL_FROM?.trim() || "";
-const SMTP_FROM =
-  process.env.SMTP_FROM?.trim() || process.env.SMTP_USER?.trim() || "";
-const DEFAULT_FROM = "ve-admin <onboarding@resend.dev>";
-// Trigger hot reload after env updates (Bervo SMTP configuration)
+const SMTP_HOST = process.env.SMTP_HOST || "";
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587", 10);
+const SMTP_USER = process.env.SMTP_USER || "";
+const SMTP_PASS = process.env.SMTP_PASS || "";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
-const getEmailFrom = (type: "smtp" | "resend" | "none") => {
-  if (type === "smtp") {
-    return SMTP_FROM || EMAIL_FROM || DEFAULT_FROM;
-  }
-
-  if (type === "resend") {
-    return EMAIL_FROM || DEFAULT_FROM;
-  }
-
-  return DEFAULT_FROM;
+// Email sender
+const getEmailFrom = () => {
+  return SMTP_USER || "noreply@ve-admin.com";
 };
 
-// ─── Transporter / Clients setup ──────────────────────────────────────────────
-let resendClient: Resend | null = null;
+// ─── Transporter setup ──────────────────────────────────────────────────
 let smtpTransporter: nodemailer.Transporter | null = null;
 
 const getEmailTransport = () => {
-  const provider = (process.env.EMAIL_PROVIDER || "").toLowerCase().trim();
+  if (!smtpTransporter && SMTP_HOST && SMTP_USER && SMTP_PASS) {
+    const secure = SMTP_PORT === 465;
 
-  // If forced Resend
-  if (provider === "resend") {
-    const resendApiKey = process.env.RESEND_API_KEY;
-    if (
-      resendApiKey &&
-      resendApiKey !== "re_your_api_key_here" &&
-      resendApiKey !== "re_placeholder"
-    ) {
-      if (!resendClient) {
-        resendClient = new Resend(resendApiKey);
-        console.log("📬  Resend email transport initialized (forced)");
-      }
-      return { type: "resend" as const, client: resendClient };
-    }
+    smtpTransporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: SMTP_PORT,
+      secure,
+      auth: {
+        user: SMTP_USER,
+        pass: SMTP_PASS,
+      },
+    });
+    console.log("📬  Email transport initialized (Google SMTP)");
   }
-
-  // Check if SMTP is configured (and not explicitly bypassed)
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-
-  if (host && user && pass && provider !== "resend") {
-    if (!smtpTransporter) {
-      const port = parseInt(process.env.SMTP_PORT || "587", 10);
-      const secure = process.env.SMTP_SECURE === "true" || port === 465;
-
-      smtpTransporter = nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: { user, pass },
-      });
-      console.log("📬  SMTP email transport initialized");
-    }
-    return { type: "smtp" as const, client: smtpTransporter };
-  }
-
-  // Fallback to Resend if SMTP is not configured or bypassed
-  const resendApiKey = process.env.RESEND_API_KEY;
-  if (
-    resendApiKey &&
-    resendApiKey !== "re_your_api_key_here" &&
-    resendApiKey !== "re_placeholder"
-  ) {
-    if (!resendClient) {
-      resendClient = new Resend(resendApiKey);
-      console.log("📬  Resend email transport initialized");
-    }
-    return { type: "resend" as const, client: resendClient };
-  }
-
-  // No configured sender
-  return { type: "none" as const, client: null };
+  return smtpTransporter;
 };
 
-// Helper function to send email via selected transporter
+// ─── Helper function to send email ──────────────────────────────────────
 const sendEmail = async (options: {
   to: string;
   subject: string;
   html: string;
 }): Promise<void> => {
-  const { type, client } = getEmailTransport();
-  const from = getEmailFrom(type);
+  const transporter = getEmailTransport();
+
+  if (!transporter) {
+    throw new Error(
+      "Email service not configured. Please set SMTP credentials."
+    );
+  }
 
   try {
-    if (type === "smtp" && client) {
-      await (client as nodemailer.Transporter).sendMail({
-        from,
-        to: options.to,
-        subject: options.subject,
-        html: options.html,
-      });
-    } else if (type === "resend" && client) {
-      const sender = from.includes("resend.dev") ? from : DEFAULT_FROM;
-      const res = await (client as Resend).emails.send({
-        from: sender,
-        to: [options.to],
-        subject: options.subject,
-        html: options.html,
-      });
-      if ((res as any).error) {
-        throw new Error((res as any).error.message || "Resend error");
-      }
-    } else {
-      throw new Error(`No email provider configured for ${options.to}`);
-    }
+    await transporter.sendMail({
+      from: getEmailFrom(),
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+    });
   } catch (error) {
     console.error(`❌  Failed to send email to ${options.to}:`, error);
     throw error;
