@@ -9,10 +9,12 @@ const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587", 10);
 const SMTP_USER = process.env.SMTP_USER || "";
 const SMTP_PASS = process.env.SMTP_PASS || "";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const EMAIL_FROM = process.env.EMAIL_FROM || "onboarding@resend.dev";
 
 // Email sender
 const getEmailFrom = () => {
-  return SMTP_USER || "noreply@ve-admin.com";
+  return EMAIL_FROM || SMTP_USER || "noreply@ve-admin.com";
 };
 
 // ─── Transporter setup ──────────────────────────────────────────────────
@@ -45,11 +47,42 @@ const sendEmail = async (options: {
   subject: string;
   html: string;
 }): Promise<void> => {
+  // If Resend API key is configured, use the HTTP API to avoid port blocks on Render
+  if (RESEND_API_KEY) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: getEmailFrom(),
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({})) as any;
+        throw new Error(errData.message || `Resend API returned status ${response.status}`);
+      }
+
+      console.log(`📧  Email sent successfully via Resend API to ${options.to}`);
+      return;
+    } catch (error) {
+      console.error(`❌  Resend API failed to send email to ${options.to}:`, error);
+      throw error;
+    }
+  }
+
+  // Fallback to Nodemailer SMTP
   const transporter = getEmailTransport();
 
   if (!transporter) {
     throw new Error(
-      "Email service not configured. Please set SMTP credentials."
+      "Email service not configured. Please set SMTP credentials or RESEND_API_KEY."
     );
   }
 

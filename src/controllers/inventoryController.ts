@@ -85,6 +85,8 @@ export const getProducts = async (
       status,
       sortBy = 'createdAt',
       sortOrder = 'desc',
+      size,
+      color,
     } = req.query as {
       page?: string;
       limit?: string;
@@ -93,6 +95,8 @@ export const getProducts = async (
       status?: string;
       sortBy?: string;
       sortOrder?: string;
+      size?: string;
+      color?: string;
     };
 
     const pageNum = Math.max(1, parseInt(page, 10));
@@ -120,6 +124,14 @@ export const getProducts = async (
         { brand: { $regex: search, $options: 'i' } },
         { tags: { $in: [new RegExp(search, 'i')] } },
       ];
+    }
+
+    // Variant filters: only products that have at least one variant matching
+    if (size || color) {
+      const elemMatch: Record<string, string> = {};
+      if (size) elemMatch.size = size;
+      if (color) elemMatch.color = color;
+      filter.variants = { $elemMatch: elemMatch } as any;
     }
 
     // Sort
@@ -479,6 +491,67 @@ export const patchStock = async (
         data: product,
       });
     }
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── GET FILTER OPTIONS ───────────────────────────────────────────────────────
+export const getFilterOptions = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const sellerId = req.user!.sellerId || req.user!._id;
+
+    const results = await Product.aggregate([
+      {
+        $match: {
+          sellerId: new mongoose.Types.ObjectId(sellerId.toString()),
+          status: { $ne: 'archived' },
+          hasVariants: true,
+          'variants.0': { $exists: true },
+        },
+      },
+      { $unwind: '$variants' },
+      {
+        $group: {
+          _id: null,
+          sizes: { $addToSet: '$variants.size' },
+          colors: { $addToSet: '$variants.color' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          sizes: {
+            $filter: {
+              input: '$sizes',
+              as: 's',
+              cond: { $and: [{ $ne: ['$$s', null] }, { $ne: ['$$s', ''] }] },
+            },
+          },
+          colors: {
+            $filter: {
+              input: '$colors',
+              as: 'c',
+              cond: { $and: [{ $ne: ['$$c', null] }, { $ne: ['$$c', ''] }] },
+            },
+          },
+        },
+      },
+    ]);
+
+    const options = results[0] || { sizes: [], colors: [] };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        sizes: (options.sizes as string[]).sort(),
+        colors: (options.colors as string[]).sort(),
+      },
+    });
   } catch (error) {
     next(error);
   }
