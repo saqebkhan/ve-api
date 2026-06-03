@@ -8,6 +8,8 @@ import authRoutes from './routes/authRoutes';
 import inventoryRoutes from './routes/inventoryRoutes';
 import teamRoutes from './routes/inviteRoutes';
 import activityRoutes from './routes/activityRoutes';
+import kanbanRoutes from './routes/kanbanRoutes';
+import modelRoutes from './routes/modelRoutes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 const app: Application = express();
@@ -70,6 +72,8 @@ app.use('/api/auth', process.env.NODE_ENV === 'development' ? (_req, _res, next)
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/activity', activityRoutes);
+app.use('/api/kanban', kanbanRoutes);
+app.use('/api/models', modelRoutes);
 
 // ─── Error Handlers ───────────────────────────────────────────────────────────
 app.use(notFoundHandler);

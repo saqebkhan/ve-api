@@ -11,11 +11,32 @@ export interface IActivityLog extends Document {
   sellerId: mongoose.Types.ObjectId;
   user: mongoose.Types.ObjectId;
   userName: string;
-  action: 'product_created' | 'product_updated' | 'product_deleted';
+  action:
+    | 'product_created'
+    | 'product_updated'
+    | 'product_deleted'
+    | 'task_created'
+    | 'task_updated'
+    | 'task_deleted'
+    | 'sprint_created'
+    | 'sprint_completed'
+    | 'model_image_uploaded'
+    | 'model_image_deleted'
+    | 'model_group_created'
+    | 'model_group_deleted'
+    | 'model_image_assigned_group';
   details: {
-    productId: mongoose.Types.ObjectId | string;
-    productName: string;
+    productId?: mongoose.Types.ObjectId | string;
+    productName?: string;
     sku?: string;
+    taskId?: mongoose.Types.ObjectId | string;
+    taskTitle?: string;
+    sprintId?: mongoose.Types.ObjectId | string;
+    sprintName?: string;
+    modelImageId?: mongoose.Types.ObjectId | string;
+    modelImageTitle?: string;
+    modelGroupId?: mongoose.Types.ObjectId | string;
+    modelGroupTitle?: string;
     changes?: IActivityChange[];
   };
   createdAt: Date;
@@ -39,19 +60,55 @@ const activityLogSchema = new Schema<IActivityLog>(
     },
     action: {
       type: String,
-      enum: ['product_created', 'product_updated', 'product_deleted'],
+      enum: [
+        'product_created',
+        'product_updated',
+        'product_deleted',
+        'task_created',
+        'task_updated',
+        'task_deleted',
+        'sprint_created',
+        'sprint_completed',
+        'model_image_uploaded',
+        'model_image_deleted',
+        'model_group_created',
+        'model_group_deleted',
+        'model_image_assigned_group',
+      ],
       required: true,
     },
     details: {
       productId: {
         type: Schema.Types.Mixed,
-        required: true,
       },
       productName: {
         type: String,
-        required: true,
       },
       sku: {
+        type: String,
+      },
+      taskId: {
+        type: Schema.Types.Mixed,
+      },
+      taskTitle: {
+        type: String,
+      },
+      sprintId: {
+        type: Schema.Types.Mixed,
+      },
+      sprintName: {
+        type: String,
+      },
+      modelImageId: {
+        type: Schema.Types.Mixed,
+      },
+      modelImageTitle: {
+        type: String,
+      },
+      modelGroupId: {
+        type: Schema.Types.Mixed,
+      },
+      modelGroupTitle: {
         type: String,
       },
       changes: [
