@@ -18,11 +18,12 @@ const sendAuthCookies = (
   userId: string,
   role: string,
   refreshToken: string
-): void => {
+): string => {
   const accessToken = generateAccessToken(userId, role);
 
   res.cookie('access_token', accessToken, accessTokenCookieOptions);
   res.cookie('refresh_token', refreshToken, refreshTokenCookieOptions);
+  return accessToken;
 };
 
 // ─── Helper: Clear Auth Cookies ───────────────────────────────────────────────
@@ -138,11 +139,13 @@ export const login = async (
     await user.save({ validateBeforeSave: false });
 
     // Set cookies
-    sendAuthCookies(res, user._id.toString(), user.role, refreshToken);
+    const accessToken = sendAuthCookies(res, user._id.toString(), user.role, refreshToken);
 
     res.status(200).json({
       success: true,
       message: 'Login successful',
+      token: accessToken,
+      refreshToken: refreshToken,
       data: {
         _id: user._id,
         name: user.name,
@@ -306,7 +309,10 @@ export const refreshToken = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const token = req.cookies?.refresh_token as string | undefined;
+    let token = req.cookies?.refresh_token as string | undefined;
+    if (!token && req.body?.refreshToken) {
+      token = req.body.refreshToken;
+    }
 
     if (!token) {
       throw new AppError('No refresh token provided', 401);
@@ -329,11 +335,13 @@ export const refreshToken = async (
     await user.save({ validateBeforeSave: false });
 
     // Set new cookies
-    sendAuthCookies(res, user._id.toString(), user.role, newRefreshToken);
+    const accessToken = sendAuthCookies(res, user._id.toString(), user.role, newRefreshToken);
 
     res.status(200).json({
       success: true,
       message: 'Token refreshed',
+      token: accessToken,
+      refreshToken: newRefreshToken,
       data: {
         _id: user._id,
         name: user.name,

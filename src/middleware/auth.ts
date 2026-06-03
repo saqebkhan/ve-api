@@ -18,8 +18,12 @@ export const protect = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Token comes from httpOnly cookie
-    const token = req.cookies?.access_token as string | undefined;
+    // Token comes from httpOnly cookie or Authorization Bearer header
+    let token = req.cookies?.access_token as string | undefined;
+
+    if (req.headers.authorization?.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
 
     if (!token) {
       res.status(401).json({

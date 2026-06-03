@@ -17,11 +17,12 @@ const sendAuthCookies = (
   userId: string,
   role: string,
   refreshToken: string
-): void => {
+): string => {
   const { generateAccessToken } = require("../utils/generateToken");
   const accessToken = generateAccessToken(userId, role);
   res.cookie("access_token", accessToken, accessTokenCookieOptions);
   res.cookie("refresh_token", refreshToken, refreshTokenCookieOptions);
+  return accessToken;
 };
 
 // ─── SEND TEAM INVITATION ─────────────────────────────────────────────────────
@@ -244,11 +245,13 @@ export const onboardMember = async (
     invitation.status = "accepted";
     await invitation.save();
 
-    sendAuthCookies(res, member._id.toString(), member.role, refreshToken);
+    const accessToken = sendAuthCookies(res, member._id.toString(), member.role, refreshToken);
 
     res.status(201).json({
       success: true,
       message: "Onboarding completed successfully! Welcome to the team.",
+      token: accessToken,
+      refreshToken: refreshToken,
       data: {
         _id: member._id,
         name: member.name,
