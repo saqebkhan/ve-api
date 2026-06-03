@@ -17,7 +17,7 @@ const isProd = process.env.NODE_ENV === 'production';
 export const accessTokenCookieOptions = {
   httpOnly: true,
   secure: isProd,
-  sameSite: (isProd ? 'strict' : 'lax') as 'strict' | 'lax',
+  sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
   maxAge: 15 * 60 * 1000, // 15 minutes
   path: '/',
 };
@@ -25,7 +25,7 @@ export const accessTokenCookieOptions = {
 export const refreshTokenCookieOptions = {
   httpOnly: true,
   secure: isProd,
-  sameSite: (isProd ? 'strict' : 'lax') as 'strict' | 'lax',
+  sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   path: '/api/auth/refresh', // Scoped to refresh endpoint
 };

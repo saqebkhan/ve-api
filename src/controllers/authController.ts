@@ -27,8 +27,19 @@ const sendAuthCookies = (
 
 // ─── Helper: Clear Auth Cookies ───────────────────────────────────────────────
 const clearAuthCookies = (res: Response): void => {
-  res.clearCookie('access_token', { path: '/' });
-  res.clearCookie('refresh_token', { path: '/api/auth/refresh' });
+  const isProd = process.env.NODE_ENV === 'production';
+  res.clearCookie('access_token', {
+    path: '/',
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+  });
+  res.clearCookie('refresh_token', {
+    path: '/api/auth/refresh',
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+  });
 };
 
 // ─── REGISTER ─────────────────────────────────────────────────────────────────

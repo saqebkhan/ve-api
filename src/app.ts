@@ -12,6 +12,10 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 const app: Application = express();
 
+if (process.env.NODE_ENV !== 'development') {
+  app.set('trust proxy', 1);
+}
+
 // ─── Security ────────────────────────────────────────────────────────────────
 app.use(helmet());
 
